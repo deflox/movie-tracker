@@ -1,0 +1,53 @@
+nav  {
+    border-bottom: 1px solid #bdc3c7;
+}
+nav .first {
+    border-left: 1px solid #bdc3c7;
+}
+nav .nav-item {
+    border-right: 1px solid #bdc3c7;
+    text-align: center;
+    padding: 10px;
+    font-size: 1.2em;
+    color: #333;
+}
+nav .nav-item:hover {
+    background-color: #ecf0f1;
+}
+
+.auth-box {
+    margin-top: 100px;
+    overflow: hidden;
+}
+
+.watch-time {
+    font-size: 3.5em;
+    font-weight: bold;
+}
+
+.ct-label {
+    font-size: 2em;
+    fill: rgba(255,255,255,.8);
+}
+
+.chart {
+    padding: 20px 0 100px 0;
+}
+
+#movies .movie-image {
+    position: relative;
+    display: inline-block;
+    width: 143px;
+    height: 210px;
+    overflow: hidden;
+    margin-right: -4px;
+    vertical-align: top;
+    cursor: pointer;
+}
+#movies .movie-image img {
+    width: 143px;
+}
+
+.error {
+    color: #c0392b;
+}
