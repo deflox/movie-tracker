@@ -18,6 +18,7 @@ use App\Util\APIRequest;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
@@ -53,7 +54,7 @@ class MoviesController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->apiKey = env('THE_MOVIE_DB_API_KEY');
+        $this->apiKey = Config::get('keys.moviedb');
     }
 
     /**
