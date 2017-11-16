@@ -117,13 +117,13 @@ class MoviesController extends Controller
         if ($validator->fails()) {
             return API::error(
                 ErrorCodeConstants::VALIDATION_ERROR,
-                ErrorMessageConstants::VALIDATION_ERRORS,
+                null,
                 $validator->errors()->messages()
             );
         }
 
         $validator = Validator::make($request->all(), [
-            'watched' => ['bail', 'numeric', new IsCorrectWatchType()],
+            'hasWatched' => ['bail', 'numeric', new IsCorrectWatchType()],
         ]);
 
         if ($validator->fails()) {
@@ -158,7 +158,7 @@ class MoviesController extends Controller
         }
 
         UserMovie::create([
-            'watched' => $request->get('watched'),
+            'watched' => $request->get('hasWatched'),
             'user_id' => Auth::id(),
             'movie_id' => $movie->id,
         ]);

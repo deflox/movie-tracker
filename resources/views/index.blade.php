@@ -36,12 +36,12 @@
             });
 
             $("#order").change(function() {
-                filterMovieList(true, $("#search").val(), $("#order").val());
+                filterMovieList(1, $("#search").val(), $("#order").val());
             });
 
             $("#search").keyup(function() {
                 delay(function(){
-                    filterMovieList(true, $("#search").val(), $("#order").val());
+                    filterMovieList(1, $("#search").val(), $("#order").val());
                 }, 500 );
             });
 

@@ -21,8 +21,15 @@
             <li>PHP / Laravel</li>
             <li>Bootstrap</li>
             <li>BootboxJS</li>
+            <li>ChartistJS</li>
             <li>jQuery</li>
             <li>MySQL</li>
         </ul>
+        <h2>Issues</h2>
+        <p>
+            If you encounter any bugs or issues, please report it in the issues section on the
+            <a href="https://github.com/deflox/movie-tracker/issues">github repository</a> and I will try to resolve
+            the issue as quick as possible. :)
+        </p>
     </div>
 @endsection

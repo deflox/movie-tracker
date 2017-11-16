@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Constants\ErrorCodeConstants;
+use App\Constants\ErrorMessageConstants;
 use App\UserMovie;
 use App\Util\API;
 use Closure;
@@ -35,7 +36,10 @@ class CheckMovieAccessRights
             ->where('user_id', Auth::id())
             ->count();
 
-        if ($count === 0) return API::error(ErrorCodeConstants::NO_PERMISSIONS);
+        if ($count === 0) return API::error(
+            ErrorCodeConstants::NO_PERMISSIONS,
+            ErrorMessageConstants::NO_PERMISSION
+        );
 
         return $next($request);
     }

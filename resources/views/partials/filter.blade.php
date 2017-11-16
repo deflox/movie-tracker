@@ -1,7 +1,7 @@
 <div class="row">
     <div class="col-md-8">
         <div class="form-group">
-            <label for="search">Search:</label>
+            <label for="search">Search your added movies:</label>
             <input type="text" id="search" class="form-control" placeholder="Enter a movie title and hit enter...">
         </div>
     </div>

@@ -18,4 +18,9 @@ class ErrorMessageConstants
      * Message in case of validation errors.
      */
     const VALIDATION_ERRORS = "The entered data is not valid. Please correct it according to the messages and try again.";
+
+    /**
+     * Message in case of permission violation.
+     */
+    const NO_PERMISSION = "You do not have permission for this movie!";
 }

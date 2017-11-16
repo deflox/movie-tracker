@@ -1,20 +1,11 @@
 /**
- * Error codes from the API.
- */
-var errorCodes = {
-    validationError: "validation_error",
-    isNotAMovieError: "is_not_a_movie",
-    noPermissionError: "no_permissions"
-};
-
-/**
  * Fields of the add movie form.
  */
 var addMovieFields = ['imdbId'];
 
 /**
- * Delays the key up event so that the it only does the request
- * after the user stopped typing for an amount of time.
+ * Delays the key up event so that the it only does the request after the user
+ * stopped typing for an amount of time.
  *
  * @see https://stackoverflow.com/a/1909508
  */
@@ -29,9 +20,9 @@ var delay = (function(){
 /**
  * Opens the dialog to add a new movie.
  *
- * @param watched
+ * @param hasWatched
  */
-function openAddDialog(watched) {
+function openAddDialog(hasWatched) {
     var addDialog = bootbox.dialog({
         title: "Add a new movie",
         message: $("#add-modal").html(),
@@ -41,25 +32,18 @@ function openAddDialog(watched) {
                 label: "Add movie",
                 className: "btn btn-primary",
                 callback: function() {
-                    $.ajax({
-                        type: "post",
-                        dataType: "json",
+                    apiCall({
                         url: window.MovieTracker.baseUrl + "/api/add",
+                        type: requestType.POST,
                         data: {
-                            '_token': window.MovieTracker.csrfToken,
                             'imdbId': $(".bootbox-body #imdbId").val(),
-                            'watched': watched ? 1 : 0
+                            'hasWatched': hasWatched ? 1 : 0
                         },
-                        success: function(response) {
-                            if (!response.errors) {
-                                addNewMovie(response.content.movie_id, response.content.title, response.content.imgPath);
-                                addDialog.modal("hide");
-                            }
-                            if (response.errors) {
-                                handleErrorResponse(response);
-                            }
+                        callback: function(response) {
+                            addMovie(response.content.movie_id, response.content.title, response.content.imgPath);
+                            addDialog.modal("hide");
                         }
-                    });
+                    }, addMovieFields);
                     return false;
                 }
             }
@@ -70,32 +54,25 @@ function openAddDialog(watched) {
 /**
  * Opens the dialog to show a single movie.
  *
- * @param movieId
+ * @param userMovieId
  * @param isWatchList
  */
-function openShowDialog(movieId, isWatchList) {
+function openShowDialog(userMovieId, isWatchList) {
     var showDialog;
     var dialogButtons = {
         deleteMovie: {
             label: "Delete movie",
             className: "btn btn-danger",
             callback: function() {
-                $.ajax({
-                    type: "post",
-                    dataType: "json",
+                apiCall({
                     url: window.MovieTracker.baseUrl + "/api/remove",
+                    type: requestType.POST,
                     data: {
-                        '_token': window.MovieTracker.csrfToken,
-                        'userMovieId': movieId
+                        'userMovieId': userMovieId
                     },
-                    success: function (response) {
-                        if (response.errors) {
-                            handleErrorResponse(response);
-                        }
-                        if (!response.errors) {
-                            $("#" + movieId).remove();
-                            showDialog.modal("hide");
-                        }
+                    callback: function() {
+                        $("#" + userMovieId).remove();
+                        showDialog.modal("hide");
                     }
                 });
                 return false;
@@ -107,45 +84,33 @@ function openShowDialog(movieId, isWatchList) {
             label: "Mark as watched",
             className: "btn btn-success",
             callback: function() {
-                $.ajax({
-                    type: "post",
-                    dataType: "json",
+                apiCall({
                     url: window.MovieTracker.baseUrl + "/api/watched",
+                    type: requestType.POST,
                     data: {
-                        '_token': window.MovieTracker.csrfToken,
-                        'userMovieId': movieId
+                        'userMovieId': userMovieId
                     },
-                    success: function (response) {
-                        if (response.errors) {
-                            handleErrorResponse(response);
-                        }
-                        if (!response.errors) {
-                            $("#" + movieId).remove();
-                            showDialog.modal("hide");
-                        }
+                    callback: function() {
+                        $("#" + userMovieId).remove();
+                        showDialog.modal("hide");
                     }
                 });
                 return false;
             }
         };
     }
-    $.ajax({
-        type: "get",
-        dataType: "json",
-        url: window.MovieTracker.baseUrl + "/api/get/" + movieId,
-        success: function(response) {
-            if (response.errors) {
-                handleErrorResponse(response);
-            }
-            if (!response.errors) {
-                showDialog = bootbox.dialog({
-                    title: response.content.title,
-                    message: substituteShowDialog($("#show-modal").html(), response.content),
-                    onEscape: true,
-                    backdrop: true,
-                    buttons: dialogButtons
-                });
-            }
+
+    apiCall({
+        url: window.MovieTracker.baseUrl + "/api/get/" + userMovieId,
+        type: requestType.GET,
+        callback: function(response) {
+            showDialog = bootbox.dialog({
+                title: response.content.title,
+                message: substituteShowDialog($("#show-modal").html(), response.content),
+                onEscape: true,
+                backdrop: true,
+                buttons: dialogButtons
+            });
         }
     });
 }
@@ -159,101 +124,33 @@ function openShowDialog(movieId, isWatchList) {
  */
 function filterMovieList(listType, searchText, orderingType) {
     showLoadingIcon();
-    $.ajax({
-        type: "post",
-        dataType: "json",
+    apiCall({
         url: window.MovieTracker.baseUrl + "/api/filter",
+        type: requestType.POST,
         data: {
-            '_token': window.MovieTracker.csrfToken,
             'searchText': searchText,
             'orderingType': orderingType,
-            'listType': listType ? 1 : 0
+            'listType': listType
         },
-        success: function (response) {
-            if (response.errors) {
-                handleErrorResponse(response);
-            }
-            if (!response.errors) {
-                for (var i = 0; i <= response.content.length; i++) {
-                    addNewMovie(response.content[i].id, response.content[i].title, response.content[i].imgPath)
+        callback: function(response) {
+            if (response.content.length !== 0) {
+                for (var i = 0; i <= response.content.length-1; i++) {
+                    addMovie(response.content[i].id, response.content[i].title, response.content[i].imgPath)
                 }
+            } else {
+                $("#movies").html("<p>No results found.</p>");
             }
         }
     });
 }
 
 /**
- * Handles errors in case the API response has some.
- *
- * @param response
- */
-function handleErrorResponse(response) {
-    removeInputErrorMessages();
-    switch (response.errorCode) {
-        case errorCodes.validationError:
-            showErrorMessage(response.errorMessage);
-            showInputErrorMessages(addMovieFields, response.errorMessages);
-            break;
-        case errorCodes.isNotAMovieError:
-            showErrorMessage(response.errorMessage);
-            break;
-        case errorCodes.noPermissionError:
-            showNoPermissionAlert(response.errorMessage);
-            break;
-        default:
-            showErrorMessage("An unknown error occurred. Please try again or contact the site administrator.");
-    }
-}
-
-/**
- * Shows alert in the dialog box with the error message.
- *
- * @param errorMessage
- */
-function showErrorMessage(errorMessage) {
-    if ($(".bootbox-body").has(".alert").length > 0) {
-        $(".bootbox-body").find(".alert").html(errorMessage);
-    } else {
-        $(".bootbox-body").prepend('<div class="alert alert-danger">' + errorMessage + '</div>');
-    }
-}
-
-/**
- * Removes all error messages below the fields.
- */
-function removeInputErrorMessages() {
-    $(".bootbox-body .error").remove();
-}
-
-/**
- * Shows the error messages below the fields.
- *
- * @param inputFields
- * @param errorMessages
- */
-function showInputErrorMessages(inputFields, errorMessages) {
-    for (var i=0; i < inputFields.length; i++) {
-        $(".bootbox-body #" + inputFields[i]).parent().append('<span class="error">' + errorMessages[inputFields[i]][0] + '</span>');
-    }
-}
-
-/**
- * Shows the loading button for refreshing the movies.
+ * Shows the loading button for filtering the movies.
  */
 function showLoadingIcon() {
     $("#movies").html(
         '<div style="margin: 50px 0; text-align: center;"><i class="fa fa-refresh fa-spin fa-3x fa-fw"></i></div>'
     );
-}
-
-/**
- * Shows the error in case user has no permissions.
- */
-function showNoPermissionAlert() {
-    bootbox.alert({
-        message: "You do not have permission for this object!",
-        backdrop: true
-    });
 }
 
 /**
@@ -263,7 +160,7 @@ function showNoPermissionAlert() {
  * @param title
  * @param path
  */
-function addNewMovie(movieId, title, path) {
+function addMovie(movieId, title, path) {
     var movieImage = '<div class="movie-image" id="' + movieId + '"><img src="https://image.tmdb.org/t/p/w640/' + path + '" title="' + title + '"></div>';
     if ($("#movies").has(".movie-image").length > 0) {
         $("#movies").prepend(movieImage);

@@ -18,7 +18,6 @@
 
     <script>
         window.MovieTracker = {!! json_encode([
-            'csrfToken' => csrf_token(),
             'baseUrl' => URL::to('/')
         ]) !!};
     </script>
@@ -32,6 +31,7 @@
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
 <script src="{{ asset('js/bootbox.min.js') }}"></script>
 <script src="{{ asset('js/chartist.min.js') }}"></script>
+<script src="{{ asset('js/api.js') }}"></script>
 <script src="{{ asset('js/app.js') }}"></script>
 @yield('js')
 
