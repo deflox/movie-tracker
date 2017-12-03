@@ -1,14 +1,10 @@
-block button when doing a request
-if you enter one more number in the imdb id validation passes but fails later on
 what happens if there is no internet available
-add pagination
 add html 5 validations to all forms
 add javascript validation to all forms
-add link back to login for password reset
 check login status for the api
 escape json response
 add success messages when deleting or mark as watched a movie
-set all error messages in the backend and just display them on the alert
-handle time out
 handle auto log out
-validate ordering type
+fix total watchtime
+replace custom rules with "in" rule
+handle adding new movie with pagination

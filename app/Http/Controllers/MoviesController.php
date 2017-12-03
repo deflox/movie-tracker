@@ -3,14 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Constants\ErrorCodeConstants;
-use App\Constants\ErrorMessageConstants;
 use App\Exceptions\IsNotAMovieException;
 use App\Genre;
 use App\Movie;
 use App\Rules\ImdbId;
 use App\Rules\IsCorrectListType;
 use App\Rules\IsCorrectOrderType;
-use App\Rules\IsCorrectWatchType;
 use App\Rules\IsUniqueMovie;
 use App\UserMovie;
 use App\Util\API;
@@ -21,6 +19,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 /**
  * Controller responsible for all movie related actions.
@@ -66,6 +65,7 @@ class MoviesController extends Controller
     {
         return view('index', [
             'userMovies' => UserMovie::watchedMovies(),
+            'totalUserMovies' => UserMovie::getTotalUserMoviesForUser(1),
         ]);
     }
 
@@ -78,6 +78,7 @@ class MoviesController extends Controller
     {
         return view('watchlist', [
             'userMovies' => UserMovie::unwatchedMovies(),
+            'totalUserMovies' => UserMovie::getTotalUserMoviesForUser(0),
         ]);
     }
 
@@ -123,7 +124,7 @@ class MoviesController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'hasWatched' => ['bail', 'numeric', new IsCorrectWatchType()],
+            'hasWatched' => ['bail', 'numeric', new IsCorrectListType()],
         ]);
 
         if ($validator->fails()) {
@@ -144,29 +145,32 @@ class MoviesController extends Controller
                 return API::error(ErrorCodeConstants::IS_NOT_A_MOVIE, $ex->getMessage());
             }
 
+            if (isset($response->release_date)) $year = Carbon::createFromFormat('Y-m-d', $response->release_date)->format('Y');
+            else $year = '1800';
+            if (isset($response->poster_path)) $imgPath = substr($response->poster_path, 1, strlen($response->poster_path));
+            else $imgPath = 'default';
+
             $movie = Movie::create([
                 'imdb_id' => $response->imdb_id,
                 'themoviedb_id' => $response->id,
                 'title' => $response->title,
-                'plot' => $response->overview,
-                'runtime' => $response->runtime,
-                'year' => Carbon::createFromFormat('Y-m-d', $response->release_date)->format('Y'),
-                'imgPath' => substr($response->poster_path, 1, strlen($response->poster_path)),
+                'plot' => $response->overview !== "" ? $response->overview : 'No plot.',
+                'runtime' => isset($response->runtime) ? $response->runtime : 0,
+                'year' => $year,
+                'imgPath' => $imgPath,
             ]);
 
             $this->assignGenres($movie, $response->genres);
         }
 
-        UserMovie::create([
+        $userMovie = UserMovie::create([
             'watched' => $request->get('hasWatched'),
             'user_id' => Auth::id(),
             'movie_id' => $movie->id,
         ]);
 
         return API::response([
-            'movie_id' => $movie->id,
-            'title' => $movie->title,
-            'imgPath' => $movie->imgPath,
+            'listType' => $userMovie->watched,
         ]);
     }
 
@@ -180,8 +184,12 @@ class MoviesController extends Controller
     {
         $userMovieId = $request->get('userMovieId');
 
+        $userMovie = UserMovie::find($userMovieId);
+
         if (UserMovie::destroy($userMovieId) === 0) return API::error(ErrorCodeConstants::UNKNOWN_ERROR);
-        else return API::response();
+        else return API::response([
+            'listType' => $userMovie->watched,
+        ]);
     }
 
     /**
@@ -196,11 +204,13 @@ class MoviesController extends Controller
         $userMovie->watched = 1;
 
         if (!$userMovie->save()) return API::error(ErrorCodeConstants::UNKNOWN_ERROR);
-        else return API::response();
+        else return API::response([
+            'listType' => 0,
+        ]);
     }
 
     /**
-     * Filters the movies based on the passed filter settings.
+     * Filters the movies according to the passed search text and ordering type.
      *
      * @param  Request $request
      * @return \Illuminate\Http\JsonResponse
@@ -209,27 +219,100 @@ class MoviesController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'orderingType' => ['bail', 'numeric', new IsCorrectOrderType($this->orderingTypes)],
-            'listType' => ['required', new IsCorrectListType()],
+            'listType' => ['required', 'numeric',  Rule::in(['1', '0'])],
         ]);
 
-        if ($validator->fails()) {
-            return API::error(ErrorCodeConstants::UNKNOWN_ERROR);
-        }
+        if ($validator->fails()) return API::error(ErrorCodeConstants::UNKNOWN_ERROR);
 
+        // Build query to filter user movies
+        $query = $this->getFilterQuery(
+            $request->get('listType'),
+            $request->get('searchText'),
+            $request->get('orderingType')
+        );
+
+        // Fetch data
+        $totalMovies = $query->get()->count();
+        $movies = $query->limit(UserMovie::LIMIT)->get();
+
+        return API::response([
+            'pagination' => ($totalMovies > UserMovie::LIMIT) ? true : false,
+            'movies' => $movies,
+        ]);
+    }
+
+    /**
+     * Finds the filtered movies for either the next or previous page.
+     *
+     * @param  Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function paginate(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'orderingType' => ['bail', 'numeric', new IsCorrectOrderType($this->orderingTypes)],
+            'listType' => ['required', 'numeric',  Rule::in(['1', '0'])],
+            'currentPage' => ['numeric', 'min:1'],
+            'direction' => [Rule::in(['next', 'previous'])],
+        ]);
+
+        if ($validator->fails()) return API::error(ErrorCodeConstants::UNKNOWN_ERROR);
+
+        // Build query to filter user movies
+        $query = $this->getFilterQuery(
+            $request->get('listType'),
+            $request->get('searchText'),
+            $request->get('orderingType')
+        );
+
+        $currentPage = $request->get('currentPage');
+        $wantedPage = $request->get('direction') === "next" ? $currentPage + 1 : $currentPage - 1;
+        $allUserMovies = $query->get()->count();
+        $numberOfPages = ceil($allUserMovies / UserMovie::LIMIT);
+        $offset = ($wantedPage - 1) * UserMovie::LIMIT;
+
+        if ($wantedPage === 0) return API::error(ErrorCodeConstants::UNKNOWN_ERROR);
+        if ($allUserMovies <= UserMovie::LIMIT) return API::error(ErrorCodeConstants::UNKNOWN_ERROR);
+        if ($wantedPage > $numberOfPages) return API::error(ErrorCodeConstants::UNKNOWN_ERROR);
+
+        $moviesForPage = $query->offset($offset)->limit(UserMovie::LIMIT)->get();
+
+        return API::response([
+            'newPage' => $wantedPage,
+            'previousAvailable' => ($wantedPage > 1) ? true : false,
+            'nextAvailable' => (($allUserMovies - $offset) > UserMovie::LIMIT) ? true : false,
+            'movies' => $moviesForPage,
+        ]);
+    }
+
+    /**
+     * Builds the query to filter the user movies with the passed parameters.
+     *
+     * @param  $listType
+     * @param  $searchText
+     * @param  $orderingType
+     * @return mixed
+     */
+    private function getFilterQuery($listType, $searchText, $orderingType) {
         $query = DB::table('user_movies')
             ->join('movies', 'user_movies.movie_id', '=', 'movies.id')
-            ->select('user_movies.id', 'movies.title', 'movies.imgPath');
+            ->select('user_movies.id', 'movies.title', 'movies.imgPath')
+            ->where('user_movies.watched', $listType)
+            ->where('user_movies.user_id', Auth::id());
 
-        if ($request->get('searchText') !== null) {
-            $query->where('movies.title', 'like', '%'.$request->get('searchText').'%');
+        if ($searchText !== null) {
+            $query->where('movies.title', 'like', '%'.$searchText.'%');
         }
 
-        if ($request->get('orderingType') != 0) {
-            $type = $this->orderingTypes[$request->get('orderingType')];
+        if ($orderingType !== '0') {
+            $type = $this->orderingTypes[$orderingType];
             $query->orderBy($type[0], $type[1]);
+        } else {
+            // Otherwise use default ordering
+            $query->orderBy('user_movies.created_at', 'desc');
         }
 
-        return API::response($query->get()->toArray());
+        return $query;
     }
 
     /**

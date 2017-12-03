@@ -10,10 +10,10 @@
             <label for="order">Ordering:</label>
             <select id="order" class="form-control">
                 <option value="0">Select desired ordering...</option>
-                <option value="1">Order by release year - newest first</option>
-                <option value="2">Order by release year - oldest first</option>
-                <option value="3">Order by runtime - longest first</option>
-                <option value="4">Order by runtime - shortest first</option>
+                <option value="1">Order by release year - oldest first</option>
+                <option value="2">Order by release year - newest first</option>
+                <option value="3">Order by runtime - shortest first</option>
+                <option value="4">Order by runtime - longest first</option>
             </select>
         </div>
     </div>

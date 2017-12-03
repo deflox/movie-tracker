@@ -34,18 +34,20 @@ nav .nav-item:hover {
     padding: 20px 0 100px 0;
 }
 
-#movies .movie-image {
-    position: relative;
-    display: inline-block;
-    width: 143px;
-    height: 210px;
-    overflow: hidden;
-    margin-right: -4px;
-    vertical-align: top;
-    cursor: pointer;
+#movies {
+    font-size: 0;
 }
-#movies .movie-image img {
-    width: 143px;
+#movies p {
+    font-size: 14px;
+}
+#movies img {
+    display: inline-block;
+    cursor: pointer;
+    width: 12.5%;
+}
+
+#pagination {
+    padding: 20px 0;
 }
 
 .error {

@@ -34,5 +34,6 @@ Route::middleware('check.ajax')->group(function () {
         Route::post('/api/remove', 'MoviesController@remove')->name('movies.remove');
         Route::post('/api/watched', 'MoviesController@markAsWatched')->name('movies.markAsWatched');
     });
-    Route::post('/api/filter', 'MoviesController@filter')->name('movies.filter');
+    Route::post('/api/filter/movies', 'MoviesController@filter');
+    Route::post('/api/paginate/movies', 'MoviesController@paginate');
 });

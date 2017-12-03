@@ -20,7 +20,7 @@ class ImdbId implements Rule
      */
     public function passes($attribute, $value)
     {
-        return preg_match("/tt\\d{7}/", $value);
+        return (strlen($value) === 9 && preg_match("/tt\\d{7}/", $value) !== 0);
     }
 
     /**

@@ -4,7 +4,7 @@ namespace App\Rules;
 
 use Illuminate\Contracts\Validation\Rule;
 
-class IsCorrectWatchType implements Rule
+class CurrentPage implements Rule
 {
     /**
      * Determine if the validation rule passes.
@@ -15,7 +15,9 @@ class IsCorrectWatchType implements Rule
      */
     public function passes($attribute, $value)
     {
-        return ($value == 0 || $value == 1);
+        if (!isset($vaue)) return true;
+
+        return ($value > 0);
     }
 
     /**
@@ -25,6 +27,6 @@ class IsCorrectWatchType implements Rule
      */
     public function message()
     {
-        return 'Incorrect watch type.';
+        return 'Incorrect current page value.';
     }
 }

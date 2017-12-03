@@ -8,6 +8,11 @@ use Illuminate\Support\Facades\Auth;
 class UserMovie extends Model
 {
     /**
+     * Defines how many movies are displayed on the each page.
+     */
+    const LIMIT = 24;
+
+    /**
      * The table associated with the model.
      *
      * @var string
@@ -43,6 +48,7 @@ class UserMovie extends Model
         return self::where('user_id', Auth::id())
             ->where('watched', 1)
             ->orderBy('created_at', 'desc')
+            ->limit(UserMovie::LIMIT)
             ->get();
     }
 
@@ -56,6 +62,22 @@ class UserMovie extends Model
         return self::where('user_id', Auth::id())
             ->where('watched', 0)
             ->orderBy('created_at', 'desc')
+            ->limit(UserMovie::LIMIT)
             ->get();
+    }
+
+    /**
+     * Gets the total watched or unwatched user movies for the current
+     * logged in user.
+     *
+     * @param  $watched
+     * @return integer
+     */
+    public static function getTotalUserMoviesForUser($watched)
+    {
+        return self::where('user_id', Auth::id())
+            ->where('watched', $watched)
+            ->get()
+            ->count();
     }
 }

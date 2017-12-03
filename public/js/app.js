@@ -4,6 +4,14 @@
 var addMovieFields = ['imdbId'];
 
 /**
+ * Possible directions for the pagination.
+ */
+var direction = {
+    PREVIOUS: "previous",
+    NEXT: "next"
+};
+
+/**
  * Delays the key up event so that the it only does the request after the user
  * stopped typing for an amount of time.
  *
@@ -30,7 +38,7 @@ function openAddDialog(hasWatched) {
         buttons: {
             add: {
                 label: "Add movie",
-                className: "btn btn-primary",
+                className: "btn-primary",
                 callback: function() {
                     apiCall({
                         url: window.MovieTracker.baseUrl + "/api/add",
@@ -40,10 +48,11 @@ function openAddDialog(hasWatched) {
                             'hasWatched': hasWatched ? 1 : 0
                         },
                         callback: function(response) {
-                            addMovie(response.content.movie_id, response.content.title, response.content.imgPath);
+                            reset(response.content.listType);
                             addDialog.modal("hide");
+                            successMessage("Movie added successfully.");
                         }
-                    }, addMovieFields);
+                    }, "btn-primary", addMovieFields);
                     return false;
                 }
             }
@@ -62,7 +71,7 @@ function openShowDialog(userMovieId, isWatchList) {
     var dialogButtons = {
         deleteMovie: {
             label: "Delete movie",
-            className: "btn btn-danger",
+            className: "btn-danger",
             callback: function() {
                 apiCall({
                     url: window.MovieTracker.baseUrl + "/api/remove",
@@ -70,11 +79,12 @@ function openShowDialog(userMovieId, isWatchList) {
                     data: {
                         'userMovieId': userMovieId
                     },
-                    callback: function() {
-                        $("#" + userMovieId).remove();
+                    callback: function(response) {
+                        reset(response.content.listType);
                         showDialog.modal("hide");
+                        successMessage("Movie deleted successfully.");
                     }
-                });
+                }, "btn-danger");
                 return false;
             }
         }
@@ -82,7 +92,7 @@ function openShowDialog(userMovieId, isWatchList) {
     if (isWatchList) {
         dialogButtons.markAsWatched = {
             label: "Mark as watched",
-            className: "btn btn-success",
+            className: "btn-success",
             callback: function() {
                 apiCall({
                     url: window.MovieTracker.baseUrl + "/api/watched",
@@ -90,11 +100,12 @@ function openShowDialog(userMovieId, isWatchList) {
                     data: {
                         'userMovieId': userMovieId
                     },
-                    callback: function() {
-                        $("#" + userMovieId).remove();
+                    callback: function(response) {
+                        reset(response.content.listType);
                         showDialog.modal("hide");
+                        successMessage("Movie successfully marked as watched.");
                     }
-                });
+                }, "btn-success");
                 return false;
             }
         };
@@ -122,26 +133,99 @@ function openShowDialog(userMovieId, isWatchList) {
  * @param searchText
  * @param orderingType
  */
-function filterMovieList(listType, searchText, orderingType) {
+function getMovieList(listType, searchText, orderingType) {
     showLoadingIcon();
     apiCall({
-        url: window.MovieTracker.baseUrl + "/api/filter",
+        url: window.MovieTracker.baseUrl + "/api/filter/movies",
         type: requestType.POST,
         data: {
-            'searchText': searchText,
-            'orderingType': orderingType,
-            'listType': listType
+            "listType": listType,
+            "searchText": searchText,
+            "orderingType": orderingType
         },
         callback: function(response) {
-            if (response.content.length !== 0) {
-                for (var i = 0; i <= response.content.length-1; i++) {
-                    addMovie(response.content[i].id, response.content[i].title, response.content[i].imgPath)
+            if (response.content.movies.length !== 0) {
+                for (var i = 0; i <= response.content.movies.length-1; i++) {
+                    addMovie(response.content.movies[i].id, response.content.movies[i].title, response.content.movies[i].imgPath);
                 }
             } else {
-                $("#movies").html("<p>No results found.</p>");
+                $("#movies").html('<p>No results found.</p>');
+            }
+            if (response.content.pagination === true) {
+                addPagination();
+            } else {
+                removePagination();
             }
         }
+
     });
+}
+
+/**
+ * Fetches the results for the next or previous page according to the direction
+ * parameter.
+ *
+ * @param listType
+ * @param searchText
+ * @param orderingType
+ * @param currentPage
+ * @param direction
+ */
+function paginate(listType, searchText, orderingType, currentPage, direction) {
+    showLoadingIcon();
+    apiCall({
+        url: window.MovieTracker.baseUrl + "/api/paginate/movies",
+        type: requestType.POST,
+        data: {
+            "listType": listType,
+            "searchText": searchText,
+            "orderingType": orderingType,
+            "currentPage": currentPage,
+            "direction": direction
+        },
+        callback: function(response) {
+            if (response.content.movies.length !== 0) {
+                for (var i = 0; i <= response.content.movies.length-1; i++) {
+                    addMovie(response.content.movies[i].id, response.content.movies[i].title, response.content.movies[i].imgPath);
+                }
+            } else {
+                showErrorMessage(unknownError);
+            }
+            updatePagination(response.content.newPage, response.content.previousAvailable, response.content.nextAvailable);
+        }
+    });
+}
+
+/**
+ * Removes the pagination from the site.
+ */
+function removePagination() {
+    $("#pagination").remove();
+}
+
+/**
+ * Adds the pagination to the page.
+ */
+function addPagination() {
+    $("#pagination").remove();
+    $("#movies").after(
+        '<div id="pagination" class="clearfix"> <button class="btn btn-primary" id="previous" disabled> <i class="fa fa-arrow-left"></i> Previous </button> <button class="btn btn-primary pull-right" id="next"> Next <i class="fa fa-arrow-right"></i> </button> </div> <input type="hidden" id="page" value="1">'
+    );
+}
+
+/**
+ * Updates the existing pagination on the page.
+ *
+ * @param newPage
+ * @param previousAvailable
+ * @param nextAvailable
+ */
+function updatePagination(newPage, previousAvailable, nextAvailable) {
+    $("#page").val(newPage);
+    if (previousAvailable === true) $("#previous").prop('disabled', false);
+    else $("#previous").prop('disabled', true);
+    if (nextAvailable === true) $("#next").prop('disabled', false);
+    else $("#next").prop('disabled', true);
 }
 
 /**
@@ -149,23 +233,28 @@ function filterMovieList(listType, searchText, orderingType) {
  */
 function showLoadingIcon() {
     $("#movies").html(
-        '<div style="margin: 50px 0; text-align: center;"><i class="fa fa-refresh fa-spin fa-3x fa-fw"></i></div>'
+        '<div style="margin: 50px 0; text-align: center; font-size: 15px"><i class="fa fa-refresh fa-spin fa-3x fa-fw"></i></div>'
     );
 }
 
 /**
- * Adds the new movie to the existing movie list.
+ * Adds a movie to the list but does not prepend the movie but instead appends the movie.
  *
  * @param movieId
  * @param title
  * @param path
  */
 function addMovie(movieId, title, path) {
-    var movieImage = '<div class="movie-image" id="' + movieId + '"><img src="https://image.tmdb.org/t/p/w640/' + path + '" title="' + title + '"></div>';
-    if ($("#movies").has(".movie-image").length > 0) {
-        $("#movies").prepend(movieImage);
+    var movieImg = "";
+    if (path !== "default") {
+        movieImg = '<img src="https://image.tmdb.org/t/p/w640/' + path + '" title="' + title + '" alt="' + title + '" id="' + movieId + '">';
     } else {
-        $("#movies").html(movieImage)
+        movieImg = '<img src="' + window.MovieTracker.baseUrl + '/img/default.png" title="' + title + '" alt="' + title + '" id="' + movieId + '">';
+    }
+    if ($("#movies").has("img").length > 0) {
+        $("#movies").append(movieImg);
+    } else {
+        $("#movies").html(movieImg);
     }
 }
 
@@ -177,9 +266,36 @@ function addMovie(movieId, title, path) {
  * @returns {string|XML}
  */
 function substituteShowDialog(text, data) {
-    return text.replace("%IMAGE%", '<img src="https://image.tmdb.org/t/p/w640/' + data.imgPath + '" style="width: 180px">')
+    var movieImg = "";
+    if (data.imgPath !== "default") {
+        movieImg = '<img src="https://image.tmdb.org/t/p/w640/' + data.imgPath + '" style="width: 180px">';
+    } else {
+        movieImg = '<img src="' + window.MovieTracker.baseUrl + '/img/default.png" style="width: 180px">';
+    }
+    return text.replace("%IMAGE%", movieImg)
         .replace("%PLOT%", data.plot)
         .replace("%YEAR%", data.year)
         .replace("%RUNTIME%", data.runtime)
         .replace("%GENRES%", data.genres);
+}
+
+/**
+ * Resets the whole view after adding or deleting a movie.
+ */
+function reset(listType) {
+    $("#search").val('');
+    $("#order").val('0');
+    getMovieList(listType, $("#search").val(), $("#order").val());
+}
+
+/**
+ * Adds a success message which will fade out after 3 seconds.
+ *
+ * @param message
+ */
+function successMessage(message) {
+    $("h1").after(
+        '<div id="message" class="alert alert-success">' + message + '</div>'
+    );
+    $("#message").delay(3000).fadeOut();
 }

@@ -29,9 +29,14 @@ var unknownError = "An unknown error occurred. Please try again or contact the s
  * Makes an API call.
  *
  * @param requestSettings
+ * @param btnClass
  * @param inputFields
  */
-function apiCall(requestSettings, inputFields) {
+function apiCall(requestSettings, btnClass, inputFields) {
+    removeAllErrors();
+    disableButton(btnClass);
+
+    // Prepare request
     $.ajaxSetup({
         headers: {
             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
@@ -39,12 +44,16 @@ function apiCall(requestSettings, inputFields) {
     });
     requestSettings.dataType = defaultDataType;
     requestSettings.success = function(response) {
+        enableButton(btnClass);
         if (response.errors) handleApiErrorResponse(response, inputFields);
         else requestSettings.callback(response);
     };
     requestSettings.error = function () {
+        enableButton(btnClass);
         showErrorMessage(unknownError);
     };
+
+    // Make actual request
     $.ajax(requestSettings);
 }
 
@@ -76,7 +85,6 @@ function handleApiErrorResponse(response, inputFields) {
  * @param errorMessage
  */
 function showErrorMessage(errorMessage) {
-    $(".alert-danger").remove();
     if ($(document).has(".bootbox-body").length > 0) {
         $(".bootbox-body").prepend('<div class="alert alert-danger">' + errorMessage + '</div>');
     } else {
@@ -91,10 +99,17 @@ function showErrorMessage(errorMessage) {
  * @param errorMessages
  */
 function showInputErrorMessages(errorMessages, inputFields) {
-    $(".bootbox-body .error").remove();
     for (var i=0; i < inputFields.length; i++) {
         $(".bootbox-body #" + inputFields[i]).parent().append('<span class="error">' + errorMessages[inputFields[i]][0] + '</span>');
     }
+}
+
+/**
+ * Removes all existing errors.
+ */
+function removeAllErrors() {
+    $(".alert-danger").remove();
+    $(".bootbox-body .error").remove();
 }
 
 /**
@@ -107,4 +122,26 @@ function showAlert(message) {
         message: message,
         backdrop: true
     });
+}
+
+/**
+ * Disables the button.
+ *
+ * @param btnClass
+ */
+function disableButton(btnClass) {
+    if (btnClass !== undefined) {
+        $("." + btnClass).prop("disabled", true);
+    }
+}
+
+/**
+ * Enables the button.
+ *
+ * @param btnClass
+ */
+function enableButton(btnClass) {
+    if (btnClass !== undefined) {
+        $("." + btnClass).prop("disabled", false);
+    }
 }

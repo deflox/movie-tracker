@@ -9,14 +9,15 @@
         <div id="movies">
             @if (count($userMovies) > 0)
                 @foreach($userMovies as $userMovie)
-                    <div class="movie-image" id="{{ $userMovie->id }}">
-                        <img src="https://image.tmdb.org/t/p/w640/{{ $userMovie->movie->imgPath }}" title="{{ $userMovie->movie->title }}">
-                    </div>
+                    @include('partials.movie')
                 @endforeach
             @else
-                <p>You did not add any movies to your watchlist yet.</p>
+                <p>You didn't add any movies to your watchlist yet.</p>
             @endif
         </div>
+        @if ($totalUserMovies > 24)
+            @include('partials.pagination')
+        @endif
     </div>
     @include('partials.add-modal')
     @include('partials.show-modal')
@@ -30,18 +31,26 @@
                 openAddDialog(false);
             });
 
-            $(document).on("click", ".movie-image", function() {
+            $(document).on("click", "img", function() {
                 openShowDialog($(this).attr("id"), true);
             });
 
             $("#order").change(function() {
-                filterMovieList(1, $("#search").val(), $("#order").val());
+                getMovieList(0, $("#search").val(), $("#order").val());
             });
 
             $("#search").keyup(function() {
                 delay(function(){
-                    filterMovieList(1, $("#search").val(), $("#order").val());
+                    getMovieList(0, $("#search").val(), $("#order").val());
                 }, 500 );
+            });
+
+            $(document).on("click", "#previous", function() {
+                paginate(0, $("#search").val(), $("#order").val(), $("#page").val(), direction.PREVIOUS);
+            });
+
+            $(document).on("click", "#next", function() {
+                paginate(0, $("#search").val(), $("#order").val(), $("#page").val(), direction.NEXT);
             });
 
         });

@@ -11,7 +11,7 @@
         <h2>Used technologies</h2>
         <p>
             This site uses the data from <a href="https://www.themoviedb.org" target="_blank">https://www.themoviedb.org</a> which
-            offers an very helpful API.
+            offers a very helpful API.
         </p>
         <img src="https://www.themoviedb.org/assets/static_cache/bb45549239e25f1770d5f76727bcd7c0/images/v4/logos/408x161-powered-by-rectangle-blue.png" alt="The Movie DB" style="width: 250px; margin: 5px 0 20px 0">
         <p>
